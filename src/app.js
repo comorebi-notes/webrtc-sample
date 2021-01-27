@@ -101,8 +101,11 @@ const hangUp = () => {
     peerConnection.close()
     peerConnection = null
     negotiationneededCounter = 0
+    console.log('sending close message');
+    ws.send(JSON.stringify({ type: 'close' }));
     cleanupVideoElement(remoteVideo)
     textForSendSdp.value = ''
+    textToReceiveSdp.value = ''
   } else {
     console.log('peerConnection is closed.')
   }
@@ -147,9 +150,10 @@ const prepareNewConnection = (isOffer) => {
   peer.onicecandidate = (event) => {
     if (event.candidate) {
       console.log(event.candidate)
+      sendIceCandidate(event.candidate)
     } else {
       console.log('empty ice event')
-      sendSdp(peer.localDescription)
+      // sendSdp(peer.localDescription)
     }
   }
 
@@ -183,8 +187,12 @@ const prepareNewConnection = (isOffer) => {
 const sendSdp = (sessionDescription) =>  {
   console.log('--- sending sdp ---')
   textForSendSdp.value = sessionDescription.sdp
-  textForSendSdp.focus()
-  textForSendSdp.select()
+  // textForSendSdp.focus()
+  // textForSendSdp.select()
+
+  const message = JSON.stringify(sessionDescription)
+  console.log(`sending SDP=${message}`)
+  ws.send(message)
 }
 
 // Answer SDPを生成する
@@ -203,4 +211,66 @@ const makeAnswer = async () => {
   } catch (e) {
     console.error(e)
   }
+}
+
+// Web Socket
+const wsUrl = 'ws://localhost:9001/'
+const ws = new WebSocket(wsUrl)
+
+ws.onopen = () => {
+  console.log('ws open()')
+}
+ws.onerror = (e) => {
+  console.error(`ws onerror() ERR: ${e}`)
+}
+ws.onmessage = async (event) => {
+  console.log(`ws onmessage() data: ${event.data}`)
+  const message = JSON.parse(event.data)
+  switch (message.type){
+    case 'offer': {
+      console.log('Received offer ...')
+      textToReceiveSdp.value = message.sdp
+      await setOffer(message)
+      break
+    }
+    case 'answer': {
+      console.log('Received answer ...')
+      textToReceiveSdp.value = message.sdp
+      await setAnswer(message)
+      break
+    }
+    case 'candidate': {
+      console.log('Received ICE candidate ...')
+      const candidate = new RTCIceCandidate(message.ice)
+      console.log(candidate)
+      await addIceCandidate(candidate)
+      break
+    }
+    case 'close': {
+      console.log('peer is closed ...')
+      hangUp()
+      break
+    }
+    default: {
+      console.log('Invalid message')
+      break
+    }
+  }
+}
+
+// ICE candidate受信時にセットする
+const addIceCandidate = async (candidate) => {
+  if (peerConnection) {
+    await peerConnection.addIceCandidate(candidate)
+  } else {
+    console.error('PeerConnection not exist!')
+  }
+}
+
+// ICE candidate生成時に送信する
+const sendIceCandidate = (candidate) => {
+  console.log('---sending ICE candidate ---')
+  const message = JSON.stringify({ type: 'candidate', ice: candidate })
+  console.log(`sending candidate=${message}`)
+  ws.send(message)
 }
