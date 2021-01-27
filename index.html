@@ -1,11 +1,30 @@
 <!doctype html>
 <html lang="ja">
 <head>
+  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
   <title>Web RTC Sample</title>
 </head>
 
 <body>
-  <video id="video" width="400" height="300" autoplay ></video>
+  <button type="button" id="start-video">Start Video</button>
+  <button type="button" id="connect">Connect</button>
+  <button type="button" id="hang-up">Hang Up</button>
+
+  <div>
+    <video id="local-video" autoplay></video>
+    <video id="remote-video" autoplay></video>
+  </div>
+
+  <div>
+    <label for="text-for-send-sdp">SDP to send:</label><br />
+    <textarea id="text-for-send-sdp" rows="5" cols="60" readonly>SDP to send</textarea>
+  </div>
+  <div>
+    <label for="text-for-receive-sdp">SDP to receive:</label>
+    <button type="button" id="receive-remote-sdp">Receive remote SDP</button><br />
+    <textarea id="text-for-receive-sdp" rows="5" cols="60"></textarea>
+  </div>
+
   <script src="build/bundle.js"></script>
 </body>
 </html>
